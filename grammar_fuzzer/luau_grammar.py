@@ -10,9 +10,14 @@ import string
 
 
 class LuauGenerator:
-    # Class-level counters shared across all instances and runs.
-    # Tracks how many times each named grammar rule has been chosen.
+    # Class-level counters tracking how many times each rule has been chosen.
     _rule_counts: dict = {}
+
+    # Static weights per rule. Any rule not listed gets weight 1.0 (default).
+    # Weights are relative — e.g. 3.0 means 3x more likely than a rule at 1.0.
+    RULE_WEIGHTS: dict = {
+        "type_union": 3.0,
+    }
 
     KEYWORDS = [
         "and", "break", "continue", "do", "else", "elseif", "end",
@@ -59,8 +64,7 @@ class LuauGenerator:
         if self._provider:
             idx = self._pick_int(0, len(callables) - 1)
         else:
-            counts = [LuauGenerator._rule_counts.get(n, 0) for n in names]
-            weights = [1.0 / (c + 1) for c in counts]
+            weights = [LuauGenerator.RULE_WEIGHTS.get(n, 1.0) for n in names]
             chosen = random.choices(names, weights=weights, k=1)[0]
             idx = names.index(chosen)
 
