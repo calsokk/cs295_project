@@ -17,7 +17,8 @@ class LuauGenerator:
     # Static weights per rule. Any rule not listed gets weight 1.0 (default).
     # Weights are relative — e.g. 3.0 means 3x more likely than a rule at 1.0.
     RULE_WEIGHTS: dict = {
-        "type_union": 3.0,
+        # Type system rules — highest bug potential
+        "type_union":        3.0,
     }
 
     KEYWORDS = [
@@ -103,17 +104,21 @@ class LuauGenerator:
     def _existing_var(self):
         if self._defined_vars:
             return self._pick_from(self._defined_vars)
-        return self._fresh_var()
+        # No vars in scope — return a safe literal instead of creating
+        # an undeclared variable reference
+        return self._pick_from(["0", '""', "true", "nil"])
 
     def _name(self):
         if self._defined_vars and self._pick_int(0, 2) > 0:
             return self._existing_var()
         return self._fresh_var()
 
+    # Small fixed pool so name collisions (duplicate keys, type redefinitions) happen naturally
+    _NAME_POOL = ["a", "b", "c", "x", "y", "z", "key", "val", "id", "name",
+                  "foo", "bar", "baz", "ok", "err", "data", "self", "idx"]
+
     def _simple_name(self):
-        letters = "abcdefghijklmnopqrstuvwxyz"
-        length = self._pick_int(1, 4)
-        return "".join(self._pick_from(list(letters)) for _ in range(length))
+        return self._pick_from(self._NAME_POOL)
 
     def _enter(self):
         self._depth += 1
@@ -178,7 +183,8 @@ class LuauGenerator:
 
     def chunk(self):
         """chunk ::= block"""
-        return self.block()
+        mode = self._pick_from(["--!strict\n", "--!nonstrict\n", ""])
+        return mode + self.block()
 
     def block(self):
         num_stmts = self._pick_int(1, 5) if not self._at_max_depth() else 1
@@ -527,14 +533,12 @@ class LuauGenerator:
             exponent = self._pick_int(-10, 10)
             return f"{mantissa}e{exponent}"
         elif choice == 5:
-            # Large/edge-case numbers
+            # Large/edge-case number literals (no expressions like 0/0)
             return self._pick_from([
                 "0xFFFFFFFFFFFFFFFF",  # u64 overflow
                 "1e308",               # near f64 max
                 "1e-308",              # near f64 min positive
-                "0/0",                 # NaN
-                "1/0",                 # inf
-                "-1/0",                # -inf
+                "math.huge",           # inf (as a value, not expression)
                 "0x7FFFFFFF",          # i32 max
                 "0x80000000",          # i32 min unsigned
                 "9999999999999999999", # large integer literal
@@ -594,11 +598,14 @@ class LuauGenerator:
         for _ in range(num_fields):
             field_type = self._pick_int(0, 2)
             if field_type == 0:
-                fields.append(f"{self._simple_name()} = {self.exp()}")
+                # Named field with simple value
+                fields.append(f"{self._simple_name()} = {self._terminal_exp()}")
             elif field_type == 1:
-                fields.append(f"[{self.exp()}] = {self.exp()}")
+                # Integer index with simple value
+                fields.append(f"[{self._pick_int(1, 10)}] = {self._terminal_exp()}")
             else:
-                fields.append(self.exp())
+                # Positional value
+                fields.append(self._terminal_exp())
         sep = self._pick_from([", ", "; "])
         return "{" + sep.join(fields) + "}"
 
@@ -614,41 +621,62 @@ class LuauGenerator:
         self._in_vararg_func = old_vararg
         return f"{attrs}function{generic}({params}){ret_type}\n{body}\nend"
 
+    # Builtins grouped by expected arg count for valid calls
+    _CALLS_1ARG = ["print", "tostring", "tonumber", "type", "typeof",
+                   "math.abs", "math.floor", "math.sqrt", "math.ceil",
+                   "string.len", "string.lower", "string.upper", "string.reverse",
+                   "table.freeze", "table.clone", "table.unpack",
+                   "error", "getmetatable", "coroutine.create", "coroutine.wrap",
+                   "bit32.bnot", "pairs", "ipairs", "rawlen"]
+    _CALLS_2ARG = ["math.max", "math.min", "math.log",
+                   "rawget", "string.rep", "string.find",
+                   "bit32.band", "bit32.bor", "bit32.bxor",
+                   "bit32.lshift", "bit32.rshift",
+                   "setmetatable", "rawequal", "table.create",
+                   "buffer.create", "select"]
+    _CALLS_VAR = ["print", "string.format", "table.concat", "table.pack",
+                  "pcall", "xpcall", "string.char", "table.insert"]
+
     def _exp_call(self):
         if self._defined_vars and self._pick_bool():
             func = self._existing_var()
+            num_args = self._pick_int(1, 3)
+            args = ", ".join(self.exp() for _ in range(num_args))
+            return f"{func}({args})"
+
+        # Pick a builtin with the right number of args
+        choice = self._pick_int(0, 2)
+        if choice == 0:
+            func = self._pick_from(self._CALLS_1ARG)
+            return f"{func}({self.exp()})"
+        elif choice == 1:
+            func = self._pick_from(self._CALLS_2ARG)
+            return f"{func}({self.exp()}, {self.exp()})"
         else:
-            func = self._pick_from(["print", "tostring", "tonumber", "type",
-                                     "math.abs", "math.floor", "math.sqrt",
-                                     "math.ceil", "math.log", "math.huge",
-                                     "string.len", "string.sub", "string.byte",
-                                     "string.char", "string.find", "string.match",
-                                     "table.concat", "table.create", "table.pack",
-                                     "table.unpack", "table.freeze", "table.clone",
-                                     "select", "rawget", "rawset", "rawlen",
-                                     "pcall", "xpcall", "error",
-                                     "setmetatable", "getmetatable",
-                                     "coroutine.create", "coroutine.wrap",
-                                     "bit32.band", "bit32.bor", "bit32.bxor",
-                                     "bit32.bnot", "bit32.lshift", "bit32.rshift",
-                                     "buffer.create", "buffer.len",
-                                     "typeof", "next", "pairs", "ipairs"])
-        num_args = self._pick_int(0, 3)
-        args = ", ".join(self.exp() for _ in range(num_args))
-        return f"{func}({args})"
+            func = self._pick_from(self._CALLS_VAR)
+            num_args = self._pick_int(1, 4)
+            args = ", ".join(self.exp() for _ in range(num_args))
+            return f"{func}({args})"
 
     def _exp_method_call(self):
         """prefixexp ':' NAME funcargs"""
-        if self._defined_vars:
-            obj = self._existing_var()
+        # Use a string literal as base so method calls are valid
+        content = self._simple_name()
+        obj = f'("{content}")'
+        # String methods with correct arg counts
+        choice = self._pick_int(0, 5)
+        if choice == 0:
+            return f"{obj}:len()"
+        elif choice == 1:
+            return f"{obj}:lower()"
+        elif choice == 2:
+            return f"{obj}:upper()"
+        elif choice == 3:
+            return f"{obj}:reverse()"
+        elif choice == 4:
+            return f"{obj}:rep({self._pick_int(1, 5)})"
         else:
-            obj = '""'  # string method on literal
-        method = self._pick_from(["len", "sub", "find", "match", "format",
-                                   "lower", "upper", "rep", "reverse",
-                                   "byte", "char", "split", "gmatch"])
-        num_args = self._pick_int(0, 2)
-        args = ", ".join(self.exp() for _ in range(num_args))
-        return f"{obj}:{method}({args})"
+            return f"{obj}:sub({self._pick_int(1, 3)}, {self._pick_int(3, 10)})"
 
     def _exp_call_string(self):
         """funcargs ::= STRING -- shorthand f"str" """
