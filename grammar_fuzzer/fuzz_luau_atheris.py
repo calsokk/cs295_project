@@ -1,7 +1,7 @@
 # Doc: Natural_Language_Code/fuzzing/info_fuzzing_grammar.md
 """
 Coverage-guided grammar-based fuzzer using Atheris.
-
+ 
 Generates syntactically valid Luau programs using FuzzedDataProvider
 and runs them against a Luau target binary. Atheris tracks coverage
 to guide mutation toward interesting inputs.
