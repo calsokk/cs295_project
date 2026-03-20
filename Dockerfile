@@ -23,7 +23,7 @@ WORKDIR /home/student
 # Clone Luau and pin to a specific version for reproducibility
 RUN git clone https://github.com/luau-lang/luau.git luau
 WORKDIR /home/student/luau
-RUN git checkout 0.709
+RUN git checkout 0.712
 
 # Build fuzz targets using the Makefile with ASan + libFuzzer
 # config=fuzz adds: -fsanitize=address,fuzzer -O2

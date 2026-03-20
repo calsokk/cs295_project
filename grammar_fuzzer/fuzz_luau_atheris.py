@@ -67,27 +67,25 @@ def _run_target(program: str):
     """Run the target binary on program. Returns subprocess.CompletedProcess."""
     encoded = program.encode("utf-8", errors="replace")
 
-    if TARGET == "compiler":
-        # luau-compile reads from stdin
-        return subprocess.run(
-            [TARGET_BINARY, "--binary", "-"],
-            input=encoded,
-            capture_output=True,
-            timeout=COMPILE_TIMEOUT,
-        )
-    else:
-        # fuzz-parser/typeck/linter take a file path in single-input mode
-        with tempfile.NamedTemporaryFile(suffix=".luau", delete=False) as f:
-            f.write(encoded)
-            tmppath = f.name
-        try:
+    # All targets need a file path (luau-compile doesn't support stdin)
+    with tempfile.NamedTemporaryFile(suffix=".luau", delete=False) as f:
+        f.write(encoded)
+        tmppath = f.name
+    try:
+        if TARGET == "compiler":
+            return subprocess.run(
+                [TARGET_BINARY, "--binary", tmppath],
+                capture_output=True,
+                timeout=COMPILE_TIMEOUT,
+            )
+        else:
             return subprocess.run(
                 [TARGET_BINARY, tmppath],
                 capture_output=True,
                 timeout=COMPILE_TIMEOUT,
             )
-        finally:
-            os.unlink(tmppath)
+    finally:
+        os.unlink(tmppath)
 
 
 def _record_compile(rules_used, success):
