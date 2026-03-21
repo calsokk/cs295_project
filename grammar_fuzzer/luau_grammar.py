@@ -11,13 +11,9 @@ import random
 
 
 class LuauGenerator:
-    # Class-level counters tracking how many times each rule has been chosen.
     _rule_counts: dict = {}
 
-    # Static weights per rule. Any rule not listed gets weight 1.0 (default).
-    # Weights are relative — e.g. 3.0 means 3x more likely than a rule at 1.0.
     RULE_WEIGHTS: dict = {
-        # Type system rules — highest bug potential
         "type_union":        3.0,
     }
 
@@ -37,7 +33,6 @@ class LuauGenerator:
 
     BUILTIN_TYPES = ["number", "string", "boolean", "nil", "any", "never"]
 
-    # Attributes recognized by Luau compiler
     ATTRIBUTES = ["native", "checked"]
 
     def __init__(self, provider=None, max_depth=5, seed=None):
@@ -46,7 +41,7 @@ class LuauGenerator:
         self._depth = 0
         self._var_counter = 0
         self._defined_vars = []
-        self._in_vararg_func = False  # tracks if we're inside a vararg function
+        self._in_vararg_func = False
         if seed is not None:
             random.seed(seed)
 
@@ -82,12 +77,10 @@ class LuauGenerator:
 
     @classmethod
     def coverage_report(cls):
-        # Return rule hit counts sorted from least to most covered.
         return dict(sorted(cls._rule_counts.items(), key=lambda kv: kv[1]))
 
     @classmethod
     def reset_coverage(cls):
-        # Clear all rule counters
         cls._rule_counts.clear()
 
     def _pick_float(self):
@@ -104,8 +97,6 @@ class LuauGenerator:
     def _existing_var(self):
         if self._defined_vars:
             return self._pick_from(self._defined_vars)
-        # No vars in scope — return a safe literal instead of creating
-        # an undeclared variable reference
         return self._pick_from(["0", '""', "true", "nil"])
 
     def _name(self):
@@ -129,8 +120,6 @@ class LuauGenerator:
     def _at_max_depth(self):
         return self._depth >= self._max_depth
 
-    # --- Attributes ---
-
     def _attributes(self):
         """attributes ::= {attribute}
         attribute ::= '@' NAME
@@ -139,8 +128,6 @@ class LuauGenerator:
             attr = self._pick_from(self.ATTRIBUTES)
             return f"@{attr} "
         return ""
-
-    # --- Var (lvalue) ---
 
     def _var(self):
         """var ::= NAME | prefixexp '[' exp ']' | prefixexp '.' NAME"""

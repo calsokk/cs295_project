@@ -129,12 +129,8 @@ class DifferentialGenerator(LuauGenerator):
 
         return "\n".join(lines)
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
 
     def _safe_extra(self, tbl_var: str, fn: str, kind: str) -> list:
-        # a few extra statements that are safe to append without causing runtime errors
         out = []
         choice = random.randint(0, 3)
         if choice == 0:
@@ -155,12 +151,9 @@ class DifferentialGenerator(LuauGenerator):
         return out
 
 
-# ---------------------------------------------------------------------------
-# Differential oracle
-# ---------------------------------------------------------------------------
-
 def _run(luau_bin: str, program: str, opt_level: int):
     """Run the program at the given opt level, returns (stdout, stderr, rc) or (None, None, None) on timeout."""
+
     source = f"--!optimize {opt_level}\n{program}"
     with tempfile.NamedTemporaryFile(suffix=".luau", delete=False, mode="w") as f:
         f.write(source)
@@ -184,10 +177,8 @@ def _is_divergence(r0, r1) -> bool:
     out1, _err1, rc1 = r1
     if out0 is None or out1 is None:
         return False   # timeout
-    # One succeeded, the other didn't → miscompilation
     if (rc0 == 0) != (rc1 == 0):
         return True
-    # Both succeeded but produced different output → miscompilation
     if rc0 == 0 and out0 != out1:
         return True
     return False
@@ -206,11 +197,6 @@ def _save(program: str, r0, r1, idx: int) -> str:
         f.write("--\n")
         f.write(program)
     return path
-
-
-# ---------------------------------------------------------------------------
-# Main loop
-# ---------------------------------------------------------------------------
 
 def main():
     ap = argparse.ArgumentParser(
@@ -258,7 +244,6 @@ def main():
             timeouts += 1
             continue
 
-        # Track programs that error under both (not bugs, just noise)
         if r0[2] != 0 and r1[2] != 0:
             errors_both += 1
 
