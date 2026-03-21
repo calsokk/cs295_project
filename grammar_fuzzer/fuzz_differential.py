@@ -1,27 +1,3 @@
-"""
-Differential fuzzer for Luau miscompilation bugs (issue #2248).
-
-Runs each generated program at --!optimize 0 and --!optimize 1 and flags
-any difference in output as a bug. Targets the fastcall fallback path where
-the compiler clobbers a register with GETUPVAL.
-
-The tricky part is that most randomly generated Luau programs just crash at
-runtime from nil refs or type errors, so you never get a clean divergence.
-To fix this we always generate a program shaped like:
-
-    local string = string
-    local tbl = {8+ numbers}
-    local function f(t) return string.char(unpack(t)) end
-    print(f(tbl))
-
-and vary the builtin, table size, element values, and call site shape.
-
-Usage:
-    python3 fuzz_differential.py
-    python3 fuzz_differential.py --iters 500 --seed 42
-    LUAU_BIN=/path/to/luau python3 fuzz_differential.py
-"""
-
 import argparse
 import os
 import random
@@ -32,10 +8,6 @@ import time
 
 sys.path.insert(0, os.path.dirname(__file__))
 from luau_grammar import LuauGenerator
-
-# ---------------------------------------------------------------------------
-# Config
-# ---------------------------------------------------------------------------
 
 LUAU_BIN = os.environ.get(
     "LUAU_BIN",
@@ -48,30 +20,19 @@ CRASH_DIR = os.environ.get(
 RUN_TIMEOUT = 5
 REPORT_EVERY = 200
 
-# ---------------------------------------------------------------------------
-# Builtins that use the FASTCALL path at opt >= 1.
-# Each entry is (lib_to_shadow, dotted_call, arg_kind) where arg_kind
-# controls what values go in the table so we don't get type errors:
-#   "byte" = 1-127 ints  (string.char)
-#   "num"  = any number  (math builtins)
-#   "uint" = 0-65535     (bit32 builtins)
-# ---------------------------------------------------------------------------
 _FASTCALL_CATALOGUE = [
-    # string builtins — string.char needs byte-range ints
-    ("string", "string.char",    "byte"),
-    ("string", "string.byte",    "byte"),   # string.byte(s, i, j) — fewer args fine
-    # math builtins accept any numbers
-    ("math",   "math.max",       "num"),
-    ("math",   "math.min",       "num"),
-    ("math",   "math.abs",       "num"),    # unary but variadic unpack still tests fallback
-    # bit32 builtins want unsigned ints
-    ("bit32",  "bit32.band",     "uint"),
-    ("bit32",  "bit32.bor",      "uint"),
-    ("bit32",  "bit32.bxor",     "uint"),
+    ("string", "string.char",  "byte"),
+    ("string", "string.byte",  "byte"),
+    ("math",   "math.max",     "num"),
+    ("math",   "math.min",     "num"),
+    ("math",   "math.abs",     "num"),
+    ("bit32",  "bit32.band",   "uint"),
+    ("bit32",  "bit32.bor",    "uint"),
+    ("bit32",  "bit32.bxor",   "uint"),
 ]
 
 
-def _make_args(kind: str, count: int) -> list:
+def _make_args(kind, count):
     if kind == "byte":
         return [str(random.randint(1, 127)) for _ in range(count)]
     elif kind == "uint":
@@ -80,17 +41,12 @@ def _make_args(kind: str, count: int) -> list:
         return [str(random.randint(-1000, 1000)) for _ in range(count)]
 
 
-# ---------------------------------------------------------------------------
-# Generator
-# ---------------------------------------------------------------------------
-
 class DifferentialGenerator(LuauGenerator):
 
-    def chunk(self) -> str:
+    def chunk(self):
         lib, fn, kind = random.choice(_FASTCALL_CATALOGUE)
 
-        # always > 7 elements so the fastcall limit is exceeded and the fallback fires
-        count = random.randint(8, 12)
+        count = random.randint(8, 12)  # > 7 so the fastcall limit is always exceeded
         elems = _make_args(kind, count)
         tbl_lit = "{" + ", ".join(elems) + "}"
 
@@ -100,14 +56,13 @@ class DifferentialGenerator(LuauGenerator):
 
         lines = []
 
-        # shadow the global lib as a local upvalue — this is what GETUPVAL clobbers
-        if random.random() < 0.85:
+        if random.random() < 0.85:  # shadow the global as a local upvalue
             self._defined_vars.append(lib)
             lines.append(f"local {lib} = {lib}")
 
         lines.append(f"local {tbl_var} = {tbl_lit}")
 
-        # vary the call site shape to hit different register allocation scenarios
+        # vary call site shape to hit different register allocation scenarios
         call_shape = random.randint(0, 2)
         if call_shape == 0:
             lines.append(f"local function {func_var}(t)")
@@ -119,41 +74,44 @@ class DifferentialGenerator(LuauGenerator):
         else:
             lines.append(f"local {res_var} = (function(t) return {fn}(unpack(t)) end)({tbl_var})")
 
-        # print the result so the optimizer can't dead-code-eliminate the call
+        # print so the optimizer can't eliminate the call
         lines.append(f"print(type({res_var}), tostring({res_var}):sub(1, 40))")
 
         if random.random() < 0.4:
-            extra = self._safe_extra(tbl_var, fn, kind)
-            if extra:
-                lines.extend(extra)
+            lines.extend(self._safe_extra(tbl_var, fn, kind))
 
         return "\n".join(lines)
 
+<<<<<<< HEAD
 
     def _safe_extra(self, tbl_var: str, fn: str, kind: str) -> list:
         out = []
+=======
+    def _safe_extra(self, tbl_var, fn, kind):
+>>>>>>> 9dc70e4 (finalize submission)
         choice = random.randint(0, 3)
         if choice == 0:
-            # Second call with a freshly built table
-            count2 = random.randint(8, 12)
-            elems2 = _make_args(kind, count2)
+            elems2 = _make_args(kind, random.randint(8, 12))
             v = self._fresh_var()
-            out.append(f"local {v} = {fn}(unpack({{{', '.join(elems2)}}}))")
-            out.append(f"print(type({v}))")
+            return [
+                f"local {v} = {fn}(unpack({{{', '.join(elems2)}}}))",
+                f"print(type({v}))",
+            ]
         elif choice == 1:
-            # Table length check
-            out.append(f"print(#{tbl_var})")
+            return [f"print(#{tbl_var})"]
         elif choice == 2:
-            # ipairs over the table
             kv = self._fresh_var()
-            out.append(f"for _, {kv} in ipairs({tbl_var}) do end")
-        # choice == 3: nothing extra
-        return out
+            return [f"for _, {kv} in ipairs({tbl_var}) do end"]
+        return []
 
 
+<<<<<<< HEAD
 def _run(luau_bin: str, program: str, opt_level: int):
     """Run the program at the given opt level, returns (stdout, stderr, rc) or (None, None, None) on timeout."""
 
+=======
+def _run(luau_bin, program, opt_level):
+>>>>>>> 9dc70e4 (finalize submission)
     source = f"--!optimize {opt_level}\n{program}"
     with tempfile.NamedTemporaryFile(suffix=".luau", delete=False, mode="w") as f:
         f.write(source)
@@ -172,11 +130,15 @@ def _run(luau_bin: str, program: str, opt_level: int):
         os.unlink(path)
 
 
-def _is_divergence(r0, r1) -> bool:
+def _is_divergence(r0, r1):
     out0, _err0, rc0 = r0
     out1, _err1, rc1 = r1
     if out0 is None or out1 is None:
+<<<<<<< HEAD
         return False   # timeout
+=======
+        return False
+>>>>>>> 9dc70e4 (finalize submission)
     if (rc0 == 0) != (rc1 == 0):
         return True
     if rc0 == 0 and out0 != out1:
@@ -184,7 +146,7 @@ def _is_divergence(r0, r1) -> bool:
     return False
 
 
-def _save(program: str, r0, r1, idx: int) -> str:
+def _save(program, r0, r1, idx):
     os.makedirs(CRASH_DIR, exist_ok=True)
     h = hash(program) & 0xFFFFFFFF
     path = os.path.join(CRASH_DIR, f"diff-{idx:06d}-{h:08x}.luau")
@@ -198,14 +160,15 @@ def _save(program: str, r0, r1, idx: int) -> str:
         f.write(program)
     return path
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 9dc70e4 (finalize submission)
 def main():
-    ap = argparse.ArgumentParser(
-        description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    ap.add_argument("--iters", type=int, default=0,    help="iterations (0 = forever)")
-    ap.add_argument("--seed",  type=int, default=None, help="random seed")
-    ap.add_argument("--depth", type=int, default=5,    help="max grammar depth")
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--iters", type=int, default=0)
+    ap.add_argument("--seed",  type=int, default=None)
+    ap.add_argument("--depth", type=int, default=5)
     args = ap.parse_args()
 
     if args.seed is not None:
@@ -213,12 +176,10 @@ def main():
 
     luau_bin = os.path.abspath(LUAU_BIN)
     if not os.path.isfile(luau_bin):
-        sys.exit(f"luau binary not found: {luau_bin}\nBuild it first or set LUAU_BIN.")
+        sys.exit(f"luau binary not found: {luau_bin}")
 
     print(f"binary  : {luau_bin}")
     print(f"crashes : {os.path.abspath(CRASH_DIR)}")
-    print(f"depth   : {args.depth}")
-    print(f"iters   : {'∞' if not args.iters else args.iters}")
     print()
 
     found = timeouts = errors_both = i = 0
@@ -257,10 +218,7 @@ def main():
 
         if i % REPORT_EVERY == 0:
             elapsed = time.time() - t0
-            print(
-                f"[{i:>7}]  {i/elapsed:5.0f} iter/s  "
-                f"found={found}  timeouts={timeouts}  both_err={errors_both}"
-            )
+            print(f"[{i:>7}]  {i/elapsed:5.0f} iter/s  found={found}  timeouts={timeouts}  both_err={errors_both}")
 
     elapsed = time.time() - t0
     print(f"\nDone. {i} iters in {elapsed:.1f}s  |  divergences: {found}")

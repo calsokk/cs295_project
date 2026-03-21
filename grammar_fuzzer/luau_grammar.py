@@ -1,18 +1,13 @@
-"""
-Luau Grammar-Based Fuzzer
-
-Recursive descent generator that produces syntactically valid Luau programs
-from the language grammar (https://luau.org/grammar/).
-
-Targets Luau 0.712.
-"""
-
 import random
 
 
 class LuauGenerator:
     _rule_counts: dict = {}
 
+<<<<<<< HEAD
+=======
+    # Static weights per rule. Any rule not listed gets weight 1.0 (default).
+>>>>>>> 9dc70e4 (finalize submission)
     RULE_WEIGHTS: dict = {
         "type_union":        3.0,
     }
@@ -154,8 +149,6 @@ class LuauGenerator:
             count = self._pick_int(1, 3)
         return ", ".join(self._var() for _ in range(count))
 
-    # --- funcname ---
-
     def _funcname(self):
         """funcname ::= NAME {'.' NAME} [':' NAME]"""
         name = self._fresh_var()
@@ -194,8 +187,6 @@ class LuauGenerator:
             return "break"
         else:
             return "continue"
-
-    # --- Statements ---
 
     def stat(self):
         self._enter()
@@ -432,8 +423,6 @@ class LuauGenerator:
             typed = f": {self.simple_type()}" if self._pick_bool() else ""
             params.append(f"...{typed}")
         return ", ".join(params)
-
-    # --- Expressions ---
 
     def explist(self):
         num = self._pick_int(1, 3)
@@ -705,8 +694,6 @@ class LuauGenerator:
         """stringinterp ::= INTERP_BEGIN exp { INTERP_MID exp } INTERP_END"""
         return self.string_interp()
 
-    # --- Type expressions ---
-
     def type_expr(self):
         self._enter()
         try:
@@ -899,8 +886,6 @@ class LuauGenerator:
             else:
                 params.append(self._pick_from(self.BUILTIN_TYPES))
         return ", ".join(params)
-
-    # --- String interpolation ---
 
     def string_interp(self):
         """stringinterp ::= INTERP_BEGIN exp { INTERP_MID exp } INTERP_END"""

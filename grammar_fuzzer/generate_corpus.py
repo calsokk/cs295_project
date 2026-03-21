@@ -1,11 +1,3 @@
-"""
-Generate a corpus of random valid Luau programs for seed fuzzing.
-
-Usage:
-    python3 generate_corpus.py --count 100 --output-dir ../seed_corpus/generated/
-    python3 generate_corpus.py --count 1000 --max-depth 6 --output-dir /tmp/corpus
-"""
-
 import argparse
 import os
 import sys

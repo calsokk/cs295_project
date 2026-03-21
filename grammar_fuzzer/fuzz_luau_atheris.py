@@ -1,22 +1,3 @@
-# Doc: Natural_Language_Code/fuzzing/info_fuzzing_grammar.md
-"""
-Coverage-guided grammar-based fuzzer using Atheris.
- 
-Generates syntactically valid Luau programs using FuzzedDataProvider
-and runs them against a Luau target binary. Atheris tracks coverage
-to guide mutation toward interesting inputs.
-
-Usage (inside Docker):
-    python3 fuzz_luau_atheris.py <corpus_dir>
-    python3 fuzz_luau_atheris.py <corpus_dir> -max_total_time=3600
-
-    # Target a specific component (default: compiler)
-    TARGET=parser  python3 fuzz_luau_atheris.py <corpus_dir>
-    TARGET=typeck  python3 fuzz_luau_atheris.py <corpus_dir>
-    TARGET=linter  python3 fuzz_luau_atheris.py <corpus_dir>
-    TARGET=compiler python3 fuzz_luau_atheris.py <corpus_dir>
-"""
-
 import signal
 import sys
 import subprocess
@@ -32,11 +13,8 @@ with atheris.instrument_imports():
 
 LUAU_DIR = "/home/student/luau"
 
-# Which component to fuzz. "compiler" uses luau-compile via stdin.
-# parser/typeck/linter use their libFuzzer binaries in single-input mode.
 TARGET = os.environ.get("TARGET", "compiler")
 
-# Map target name to binary path
 _TARGET_BINARIES = {
     "compiler": os.environ.get("LUAU_COMPILE", f"{LUAU_DIR}/luau-compile"),
     "parser":   f"{LUAU_DIR}/fuzz-parser",
