@@ -20,19 +20,15 @@ Dockerfile_aarch64      # ARM64 build environment (Apple Silicon)
 run_docker.sh           # Build image and start container
 seed_corpus/            # Hand-written valid Luau programs
 grammar_fuzzer/
-    luau_grammar.py           # Recursive descent Luau program generator
-    generate_corpus.py        # Batch corpus generation
-    fuzz_luau_atheris.py      # Atheris coverage-guided grammar fuzzer
-    fuzz_typeck_custom.cpp    # Custom fuzz target for new type solver (V2)
-    fuzz_buffer_bug.py        # Targeted generator for buffer constant-folding bugs
-    fuzz_typefunc_bug.py      # Targeted generator for type function crashes
-    fuzz_differential.py      # Differential fuzzer for miscompilation bugs
+    luau_grammar.py         # Recursive descent Luau program generator
+    generate_corpus.py      # Batch corpus generation
+    fuzz_luau_atheris.py    # Atheris coverage-guided grammar fuzzer
+    fuzz_differential.py    # Differential fuzzer for miscompilation bugs
 scripts/
-    run_typeck_fuzzer.sh      # Fuzz the type checker (found real bugs)
-    run_fuzzer.sh             # Start a libFuzzer campaign
-    run_native_with_grammar_seeds.sh  # Run native fuzzers with grammar seeds
-    collect_crashes.sh        # Summarize crash artifacts
-    minimize_corpus.sh        # Deduplicate corpus with libFuzzer merge
-    reproduce_crash.sh        # Replay a single crash input
+    run_fuzzer.sh                       # Start a libFuzzer campaign
+    collect_crashes.sh                  # Summarize crash artifacts
+    minimize_corpus.sh                  # Deduplicate corpus with libFuzzer merge
+    reproduce_crash.sh                  # Replay a single crash input
+    run_native_with_grammar_seeds.sh    # Run native harness seeded with grammar corpus
 ```
 
