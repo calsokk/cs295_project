@@ -1,5 +1,4 @@
 #!/bin/bash
-# Doc: Natural_Language_Code/build/info_build.md
 # Collect and summarize crash files from all fuzzing targets.
 #
 # Usage (inside Docker):

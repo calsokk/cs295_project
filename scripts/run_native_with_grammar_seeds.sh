@@ -1,15 +1,6 @@
 #!/bin/bash
-# Run native libFuzzer binaries seeded with grammar-generated inputs.
-#
-# This is ~1500x faster than routing parser/typeck/linter through the
-# Atheris Python wrapper (~2 exec/s → ~3000 exec/s).  Grammar-generated
-# seeds give libFuzzer structurally valid starting points; libFuzzer's own
-# coverage-guided mutation takes over from there.
-#
-# Usage (inside Docker):
-#   ./scripts/run_native_with_grammar_seeds.sh parser          # 1 hour, 1 worker
-#   ./scripts/run_native_with_grammar_seeds.sh typeck 7200 4   # 2 hours, 4 workers
-#   ./scripts/run_native_with_grammar_seeds.sh linter 3600     # 1 hour
+# Run native libFuzzer binaries with grammar-generated seed inputs.
+# Usage: ./scripts/run_native_with_grammar_seeds.sh <target> [max_time] [workers]
 
 set -e
 

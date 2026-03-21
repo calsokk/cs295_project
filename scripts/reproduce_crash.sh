@@ -1,5 +1,4 @@
 #!/bin/bash
-# Doc: Natural_Language_Code/build/info_build.md
 # Reproduce a single crash for debugging and analysis.
 #
 # Usage (inside Docker):

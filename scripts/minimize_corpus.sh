@@ -1,5 +1,4 @@
 #!/bin/bash
-# Doc: Natural_Language_Code/build/info_build.md
 # Minimize the fuzzer corpus for a given target using libFuzzer's -merge feature.
 #
 # Usage (inside Docker):

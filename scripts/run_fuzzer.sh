@@ -1,5 +1,4 @@
 #!/bin/bash
-# Doc: Natural_Language_Code/build/info_build.md
 # Start a libFuzzer fuzzing campaign for a Luau target.
 #
 # Usage (inside Docker):
