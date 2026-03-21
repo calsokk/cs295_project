@@ -82,13 +82,7 @@ class DifferentialGenerator(LuauGenerator):
 
         return "\n".join(lines)
 
-<<<<<<< HEAD
-
-    def _safe_extra(self, tbl_var: str, fn: str, kind: str) -> list:
-        out = []
-=======
     def _safe_extra(self, tbl_var, fn, kind):
->>>>>>> 9dc70e4 (finalize submission)
         choice = random.randint(0, 3)
         if choice == 0:
             elems2 = _make_args(kind, random.randint(8, 12))
@@ -105,13 +99,7 @@ class DifferentialGenerator(LuauGenerator):
         return []
 
 
-<<<<<<< HEAD
-def _run(luau_bin: str, program: str, opt_level: int):
-    """Run the program at the given opt level, returns (stdout, stderr, rc) or (None, None, None) on timeout."""
-
-=======
 def _run(luau_bin, program, opt_level):
->>>>>>> 9dc70e4 (finalize submission)
     source = f"--!optimize {opt_level}\n{program}"
     with tempfile.NamedTemporaryFile(suffix=".luau", delete=False, mode="w") as f:
         f.write(source)
@@ -134,11 +122,7 @@ def _is_divergence(r0, r1):
     out0, _err0, rc0 = r0
     out1, _err1, rc1 = r1
     if out0 is None or out1 is None:
-<<<<<<< HEAD
-        return False   # timeout
-=======
         return False
->>>>>>> 9dc70e4 (finalize submission)
     if (rc0 == 0) != (rc1 == 0):
         return True
     if rc0 == 0 and out0 != out1:
@@ -160,10 +144,6 @@ def _save(program, r0, r1, idx):
         f.write(program)
     return path
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 9dc70e4 (finalize submission)
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--iters", type=int, default=0)

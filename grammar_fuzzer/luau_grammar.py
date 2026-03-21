@@ -4,10 +4,6 @@ import random
 class LuauGenerator:
     _rule_counts: dict = {}
 
-<<<<<<< HEAD
-=======
-    # Static weights per rule. Any rule not listed gets weight 1.0 (default).
->>>>>>> 9dc70e4 (finalize submission)
     RULE_WEIGHTS: dict = {
         "type_union":        3.0,
     }
