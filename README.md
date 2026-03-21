@@ -33,8 +33,3 @@ scripts/
     reproduce_crash.sh      # Replay a single crash input
 ```
 
-## Findings
-
-**OOM bug in Luau 0.660.** Deeply nested type annotations with string interpolation and `type function` declarations caused the compiler to exhaust memory within ~18,000 iterations. Fixed in 0.709.
-
-**Register corruption in Luau 0.709 ([#2248](https://github.com/luau-lang/luau/issues/2248)).** Calling `string.char(unpack(tbl))` with 8+ elements corrupts a register in the fastcall fallback path, causing a runtime type error at `--!optimize 1`. Fixed in 0.710. Found using `fuzz_differential.py`.
